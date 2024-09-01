@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import './passpost';
 import { ScrapperController } from './scrapper/scrapper-controller';
 import { ScrapperService } from './scrapper/scrapper-service';
+import connectDB from './db';
 
 dotenv.config();
 
@@ -26,11 +27,10 @@ app.use('/', authRoutes);
 app.use('/', eventRoutes);
 
 const some = async() => {
+  await connectDB()
   const service = new ScrapperService()
   const controler = new ScrapperController(service)
-  await controler.initializeBrowser()
-  await controler.loadTimetable()
-  await controler.closeBrowser()
+  await controler.loadSchedule()
 }
 some()
 
