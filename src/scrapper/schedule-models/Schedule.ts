@@ -2,16 +2,19 @@ import mongoose, { Document, Schema } from "mongoose";
 import { Subject } from "../types/types";
 
 const SubjectSchema: Schema = new Schema({
-    name: { type: String, required: true },
-    teacher: { type: String, required: true },
-    cabinet: { type: String, required: true },
-    start_time: { type: String, required: true },
-    end_time: { type: String, required: true }
+    name: { type: String },
+    teacher: { type: String },
+    cabinet: { type: String },
+    start_time: { type: String },
+    end_time: { type: String },
+    count: {type: Number},
+    index: {type: Number},
+    is_choosen: {type: Boolean}
 });
 
 const ScheduleSchema: Schema = new Schema({
     class: { type: String, required: true },
-    schedule: [[SubjectSchema]] 
+    schedule: [[[SubjectSchema]]] 
 });
 
 export interface ISchedule extends Document {

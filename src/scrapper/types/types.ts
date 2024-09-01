@@ -8,3 +8,13 @@ export interface Subject{
     index: number
     is_choosen: boolean;
 }
+
+export interface ScheduleStructure{
+    schedule: Subject[][][], 
+    class: string 
+}
+
+export interface ClassUrl{
+    class: string;
+    url: string;
+}

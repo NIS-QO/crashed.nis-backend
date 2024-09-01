@@ -1,10 +1,13 @@
-import { Subject } from "./types/types";
+import { ClassUrl, ScheduleStructure, Subject } from "./types/types";
 import Schedule, { ITimetable } from "./schedule-models/Schedule";
 import mongoose from "mongoose";
 import Timetable, { ISaveTimeTable } from "./timetable-models/Timetable";
+import ClassUrlDb, { IClassUrl } from "./class-models/CLass";
+
 import { promises as fs } from 'fs';
 import axios from "axios"
 import * as cheerio from 'cheerio';
+import { Page } from "puppeteer";
 const COOKIES_PATH = 'cookies.json';
 
 export class ScrapperService{
@@ -36,11 +39,12 @@ export class ScrapperService{
     //       await page.goto(url);
     // }
 
-    async GetScheduleViaAxios(url: string, Class: number){
+    async GetScheduleViaAxios(url: string, Class: number): Promise<Subject[][][]>{
+        const scheduleData: Subject[][][] = []
+
         try{
             const resp = await axios.get(url)
             const $ = cheerio.load(resp.data);
-            const scheduleData: Subject[][][] = []
             $('.waffle tbody tr').each((index, element) => {
                 let softmergeText = $(element).find('.softmerge-inner').text().trim();
                 const ltrTexts: string[] = [];
@@ -60,17 +64,7 @@ export class ScrapperService{
                             softmergeText = $(element).find('.s3').text().trim();
                     }
                 }
-                if (Class > 10){
-                    return 
-                }
-                if (!softmergeText){
-                    softmergeText = $(element).find('.s17').text().trim();
-                }
-                if (!softmergeText){
-                    softmergeText = $(element).find('.s19').text().trim();
-                }
 
-                const tdArray = [];
                 let prev_s14 = 0
                 let prev_class = ""
                 
@@ -131,7 +125,6 @@ export class ScrapperService{
                             prev_class = "ltr"                            
                         }
                     }
-                    tdArray.push($(el).text().trim());
                 });
     
                 // $(element).find('[dir="ltr"]').each((i, el) => {
@@ -154,112 +147,43 @@ export class ScrapperService{
         }catch(err: any){
             console.error(err)
         }
+        return scheduleData
     }
 
-    // // TODO: make google sheets.
-    // async GetSchedule(url: string,page: Page) { 
-    //     await this.retryRequest(page, url, 0, 3);
+    async GetScheduleClassesUrlViaAxios(url: string){
+        // actually axios can't get them because it's an event based thing.
+    }
 
-    //     this.timetable = await this.getTimetable() || {}
+    // puppeteer is too unstable for production so will not use it.
+    // TODO: make google sheets.
+    async GetSchedule(url: string,page: Page) { 
+        await this.retryRequest(page, url, 0, 3);
 
-    //     const elements = await page.$$('.goog-inline-block.docs-sheet-tab.docs-material');
-    //     console.log(elements.length)
+        const elements = await page.$$('.goog-inline-block.docs-sheet-tab.docs-material');
+        console.log(elements.length)
+
+        const urls: ClassUrl[] = []
     
-    //     for (const element of elements) {
-    //         await sleep(2000)
-    //         const Class = await element.evaluate(el => el.textContent?.trim() || '');
-    //         const schedule = []
-    //         let diapozons = []
-    //         const min_index = 2
-    //         const max_index = 12
-    //         if (Class.toLowerCase().includes("s")){
-    //             continue
-    //         }
-    //         if (Class.startsWith("7")){
-    //             diapozons = [["C"],["E"],["G"],["I"],["K"]]
-    //         }
-    //         else{
-    //             if (Class.startsWith("11") || Class.startsWith("12")){
-    //                 break 
-    //             }
-    //             else{
-    //                 diapozons = [["C","D"],["F","G"],["I","J"],["L","M"],["O","P"]]
-    //             }
-    //         }
-    //         await element.click();
-            
-    //         for (const diapozon of diapozons){
-    //             await sleep(1000)
-    //             const day = []
-    //             const first = diapozon[0]
-    //             let second 
-    //             if (diapozon.length > 1){
-    //                 second = diapozon[1]
-    //             }
+        for (const element of elements) {
+            await sleep(2000)
+            const Class = await element.evaluate(el => el.textContent?.trim() || '');
+            if (Class === "Кружки" || Class === "Электив" || Class === "schedule"){
+                continue
+            }
+            await element.click();    
+            const temp: ClassUrl = {class: Class, url: page.url()}
+            urls.push(temp)
+        }
+        await this.SaveClassesUrls(urls)
 
-    //             for (let i = min_index; i <=max_index; i++){
-    //                 await sleep(2000)
-    //                 await page.waitForSelector('#t-name-box');
-    //                 await page.evaluate(() => {
-    //                     const input = document.querySelector('#t-name-box') as HTMLInputElement;
-    //                     if (input) {
-    //                         input.value = '';
-    //                     }
-    //                 });
-
-    //                 await page.focus('#t-name-box');
-    //                 await page.keyboard.type(first + i.toString());
-    //                 await page.keyboard.press('Enter');
-
-    //                 await sleep(500);
-                    
-    //                 await page.waitForSelector('.cell-input');
-    //                 const textFirst = await this.getElementText(page, '.cell-input');
-    //                 const firstGropsSubject = this.getSubjectInformation(textFirst, i-min_index)
-                    
-                    
-    //                 if (second){
-    //                     await page.waitForSelector('#t-name-box');
-    //                     await page.evaluate(() => {
-    //                         const input = document.querySelector('#t-name-box') as HTMLInputElement;
-    //                         if (input) {
-    //                             input.value = '';
-    //                         }
-    //                     });
-
-    //                     await page.focus('#t-name-box');
-    //                     await page.keyboard.type(first + i.toString());
-    //                     await page.keyboard.press('Enter');
-
-    //                     await sleep(500);
-                        
-    //                     await page.waitForSelector('.cell-input');
-    //                     const textSecond = await this.getElementText(page, '.cell-input');
-    //                     const secondGropsSubject = this.getSubjectInformation(textSecond, i-min_index)
-
-    //                     if (areObjectsEqual(firstGropsSubject, secondGropsSubject)) {
-    //                         day.push([firstGropsSubject]);
-    //                     } else {
-    //                         day.push([firstGropsSubject, secondGropsSubject]);
-    //                     }
-    //                 }else{
-    //                     day.push([firstGropsSubject])
-    //                 }
-    //             }
-    //             console.log(day)
-    //             schedule.push(day)
-    //         }
-    //         console.log(schedule)
-    //         break 
-    //     }
-    // }
+    }
     
-    // private async getElementText(page: Page, selector: string): Promise<string> {
-    //     return page.evaluate((selector) => {
-    //         const element = document.querySelector(selector);
-    //         return element ? element.textContent?.trim() || '' : '';
-    //     }, selector);
-    // }
+    private async getElementText(page: Page, selector: string): Promise<string> {
+        return page.evaluate((selector) => {
+            const element = document.querySelector(selector);
+            return element ? element.textContent?.trim() || '' : '';
+        }, selector);
+    }
 
     private timetable: { [key: number]: string } = {}
 
@@ -339,21 +263,21 @@ export class ScrapperService{
 //     async GetCabinetChanges(){
 
 //     }
-//     async retryRequest(page: Page, url: string, attempt: number, maxRetries: number): Promise<void> {
-//         attempt++;
-//         console.log(`Attempt ${attempt}: Navigating to ${url}`);
-//         const response = await page.goto(url, {timeout: 0});
-//         if (response && response.status() !== 200) {
-//             console.warn(`Attempt ${attempt}: Received non-200 status code (${response.status()}). Retrying...`);
-//             if (attempt < maxRetries) {
-//                 await this.retryRequest(page, url, attempt, maxRetries);
-//             } else {
-//                 throw new Error(`Failed to load the page after ${maxRetries} attempts.`);
-//             }
-//         } else {
-//             console.log(`Attempt ${attempt}: Page loaded successfully with status ${response?.status()}`);
-//         }
-//     };
+    async retryRequest(page: Page, url: string, attempt: number, maxRetries: number): Promise<void> {
+        attempt++;
+        console.log(`Attempt ${attempt}: Navigating to ${url}`);
+        const response = await page.goto(url, {timeout: 0});
+        if (response && response.status() !== 200) {
+            console.warn(`Attempt ${attempt}: Received non-200 status code (${response.status()}). Retrying...`);
+            if (attempt < maxRetries) {
+                await this.retryRequest(page, url, attempt, maxRetries);
+            } else {
+                throw new Error(`Failed to load the page after ${maxRetries} attempts.`);
+            }
+        } else {
+            console.log(`Attempt ${attempt}: Page loaded successfully with status ${response?.status()}`);
+        }
+    };
 
     getSubjectInformation(str: string, time: string, count: number):Subject{
         let subject: Subject = {
@@ -394,6 +318,24 @@ export class ScrapperService{
         return subject
     }
 
+    async SaveClassesUrls(data: ClassUrl[]){
+        try{
+            await ClassUrlDb.insertMany(data)
+        }catch(err){
+            console.error(err)
+        }
+    }
+
+    async GetCLassicUrls():Promise<ClassUrl[] | null>{
+        try{
+            const resp = await ClassUrlDb.find({})
+            return resp 
+        }catch(err){
+            console.error(err)
+            return null 
+        }
+    }
+
     async SaveTimetable(result: { [key: number]: string }){
         try {  
             await Timetable.findOneAndUpdate(
@@ -420,6 +362,37 @@ export class ScrapperService{
         } catch (error) {
             console.error("Error retrieving timetable:", error);
             return null;
+        }
+    }
+
+    transformHighSchoolSchedule(schedule: Subject[][][]):Subject[][][]{
+        const result: Subject[][][] = []
+        let day = 0
+        let window = 0
+
+        for(let i = 0;i < schedule.length; i++){
+            if (!result[day]){
+                result[day] = []
+            }
+            window = 0
+            for(let j = 0;j < schedule[i].length; j++){
+                if (!result[day][window]){
+                    result[day][window] = []
+                }
+                result[day][window].push(schedule[j][i][0])
+                window += 1
+            }
+            day += 1
+        }
+
+        return result 
+    }
+
+    async saveSchedule(data: ScheduleStructure){
+        try{
+            await Schedule.insertMany(data)
+        }catch(err){
+            console.error(err)
         }
     }
 }
