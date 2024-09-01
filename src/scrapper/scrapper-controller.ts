@@ -46,9 +46,7 @@ export class ScrapperController {
                     return;
                 }
 
-                if (result > 10){
-                    break 
-                }
+                console.log(result, classUrl.class)
     
                 let schedule: any;
                 let attempt = 0;
@@ -79,6 +77,7 @@ export class ScrapperController {
                     };
     
                     await this.scrapperService.saveSchedule(res);
+                
                 }
     
                 // Continue with the next classUrl

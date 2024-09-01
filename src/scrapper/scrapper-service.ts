@@ -8,6 +8,7 @@ import { promises as fs } from 'fs';
 import axios from "axios"
 import * as cheerio from 'cheerio';
 import { Page } from "puppeteer";
+import CLass from "./class-models/CLass";
 const COOKIES_PATH = 'cookies.json';
 
 export class ScrapperService{
@@ -48,29 +49,35 @@ export class ScrapperService{
             $('.waffle tbody tr').each((index, element) => {
                 let softmergeText = $(element).find('.softmerge-inner').text().trim();
                 const ltrTexts: string[] = [];
-                if (!softmergeText){
-                    switch (Class){
+                if (!softmergeText) {
+                    switch (Class) {
                         case 7:
                             softmergeText = $(element).find('.s17').text().trim();
+                            break;
                         case 8:
                             softmergeText = $(element).find('.s18').text().trim();
+                            break;
                         case 9:
                             softmergeText = $(element).find('.s17').text().trim();
+                            break;
                         case 10:
                             softmergeText = $(element).find('.s19').text().trim();
+                            break;
                         case 11:
                             softmergeText = $(element).find('.s3').text().trim();
+                            break;
                         case 12:
                             softmergeText = $(element).find('.s3').text().trim();
+                            break;
                     }
                 }
-
+                
                 let prev_s14 = 0
                 let prev_class = ""
                 
                 $(element).find('td').each((i, el) => {
                     if ($(el).attr('class') === 's14'){
-                        if (prev_class === 's14' || (prev_s14 === 0 && prev_class === "")){
+                        if ((prev_class === 's14' || (prev_s14 === 0 && prev_class === "")) && Class != 12){
                             const lastElementIndex = scheduleData[prev_s14].length - 1;
                             for (let i=0;i<scheduleData[prev_s14][lastElementIndex].length; i++){
                                 const changed = Object.assign({}, scheduleData[prev_s14][lastElementIndex][i]);;
@@ -95,7 +102,7 @@ export class ScrapperService{
                     }else{
                         if ($(el).attr('dir') === 'ltr'){
                             const cellText = $(el).text();
-                            const countClassname = $(el).attr('rowspan')
+                            let countClassname = $(el).attr('rowspan')
                             let count: number = 1
                             if (countClassname) {
                                 count = parseInt(countClassname, 10); 
@@ -112,8 +119,23 @@ export class ScrapperService{
                                 scheduleData[prev_s14] = []
                             }
 
+                            countClassname = $(el).attr('colspan')
+                            count = 1
+                            if (countClassname){
+                                count = parseInt(countClassname, 10); 
+                              
+                                if (isNaN(count)) {
+                                  count = 1; 
+                                }
+                            }
+
                             if (Class > 10){
-                                scheduleData[prev_s14].push([currentSubject])
+                                if (!scheduleData[index]){
+                                    scheduleData[index] = []
+                                }
+                                for (let i=0;i<count;i++){
+                                    scheduleData[index].push([currentSubject])
+                                }
                             }else{
 
                             if (prev_class === "ltr"){
@@ -141,7 +163,6 @@ export class ScrapperService{
                 // });
 
             });
-            console.log(JSON.stringify(scheduleData, null, 2));
 
 
         }catch(err: any){
@@ -294,7 +315,7 @@ export class ScrapperService{
         subject.start_time = startTime.trim()
         subject.end_time = endTime ? endTime.trim() : ""
         for (const subjectName of allSubjects){
-            if (str.startsWith(subjectName)){
+            if (str.toLowerCase().startsWith(subjectName.toLowerCase())){
                 if (subjectName[subjectName.length-1] === "№"){
                     subject.name = subjectName + str[subjectName.length]
                     subject.is_choosen = true
@@ -365,32 +386,28 @@ export class ScrapperService{
         }
     }
 
-    transformHighSchoolSchedule(schedule: Subject[][][]):Subject[][][]{
-        const result: Subject[][][] = []
-        let day = 0
-        let window = 0
+    transformHighSchoolSchedule(schedule: Subject[][][]): Subject[][][] {
+        const result: Subject[][][] = [];
 
-        for(let i = 0;i < schedule.length; i++){
-            if (!result[day]){
-                result[day] = []
+        for (let row = 0; row < schedule.length; row++) {
+            if (!schedule[row]){
+                continue
             }
-            window = 0
-            for(let j = 0;j < schedule[i].length; j++){
-                if (!result[day][window]){
-                    result[day][window] = []
+            for (let Class = 0; Class < schedule[row].length; Class++){
+                if (!result[Class]){
+                    result[Class] = []
                 }
-                result[day][window].push(schedule[j][i][0])
-                window += 1
+                result[Class].push([schedule[row][Class][0]])
             }
-            day += 1
         }
-
-        return result 
+    
+        return result;
     }
 
     async saveSchedule(data: ScheduleStructure){
         try{
-            await Schedule.insertMany(data)
+            // await Schedule.insertMany(data)
+            await Schedule.findOneAndUpdate({class: data.class},data)
         }catch(err){
             console.error(err)
         }

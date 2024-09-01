@@ -31,6 +31,7 @@ const some = async() => {
   const service = new ScrapperService()
   const controler = new ScrapperController(service)
   await controler.loadSchedule()
+  // await service.GetScheduleViaAxios("https://docs.google.com/spreadsheets/d/1r8qzFN-ijQhbQ9Ctj0wGHC-JTKCZZxJ-/edit?gid=457180191#gid=457180191", 11)
 }
 some()
 
