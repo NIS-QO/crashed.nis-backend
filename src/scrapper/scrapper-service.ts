@@ -3,6 +3,7 @@ import Schedule, { ITimetable } from "./schedule-models/Schedule";
 import mongoose from "mongoose";
 import Timetable, { ISaveTimeTable } from "./timetable-models/Timetable";
 import ClassUrlDb, { IClassUrl } from "./class-models/CLass";
+import Subjects from "./subject-models/Subject"
 
 import { promises as fs } from 'fs';
 import axios from "axios"
@@ -40,13 +41,50 @@ export class ScrapperService{
     //       await page.goto(url);
     // }
 
-    async GetScheduleViaAxios(url: string, Class: number): Promise<Subject[][][]>{
+    async GetScheduleViaAxios(url: string, Class: number, FullClass: string): Promise<Subject[][][]>{
         const scheduleData: Subject[][][] = []
+
+        const times = ["08.20-09.00","09.15-09.55","10.05-10.45","10.50-11.30","11.55-12.35","13.00-13.40",
+            "13.45-14.25","14.40-15.20","15.50-16.30","16.35-17.15"
+        ]
 
         try{
             const resp = await axios.get(url)
             const $ = cheerio.load(resp.data);
+            let dayOfWeekString = ""
+
+                const days_of_week: { [key: string]: number } = {
+                    "Понедельник": 1,  
+                    "Вторник": 2,       
+                    "Среда": 3,         
+                    "Четверг": 4,       
+                    "Пятница": 5,       
+                    "Суббота": 6,       
+                    "Воскресенье": 7    
+                };
+                
+                let dayOfWeek: number = 0;
+                const classIndextoString: string[] = []
+                
+                if (Class > 10) {
+                    $(".s0").each((i, el) => {
+                        const dayOfWeekString: string = $(el).text().trim();
+                        if (dayOfWeekString && days_of_week.hasOwnProperty(dayOfWeekString)) {
+                            dayOfWeek = days_of_week[dayOfWeekString];
+                        }
+                    });
+                    $(".s1").each((i,el) => {
+                        const ClassHeader = $(el).text().trim()
+                        classIndextoString.push(ClassHeader)
+                        if ($(el).attr("colspan") === "2"){
+                            classIndextoString.push(ClassHeader)
+                        }
+                    })
+                    console.log(dayOfWeek)
+                }
+                let customIndex = 0
             $('.waffle tbody tr').each((index, element) => {
+               
                 let softmergeText = $(element).find('.softmerge-inner').text().trim();
                 const ltrTexts: string[] = [];
                 if (!softmergeText) {
@@ -74,19 +112,23 @@ export class ScrapperService{
                 
                 let prev_s14 = 0
                 let prev_class = ""
-                
+                let ind = 0                
                 $(element).find('td').each((i, el) => {
                     if ($(el).attr('class') === 's14'){
-                        if ((prev_class === 's14' || (prev_s14 === 0 && prev_class === "")) && Class != 12){
+                        if ((prev_class === 's14' || (prev_s14 === 0 && prev_class === "")) && Class < 11){
                             const lastElementIndex = scheduleData[prev_s14].length - 1;
                             for (let i=0;i<scheduleData[prev_s14][lastElementIndex].length; i++){
                                 const changed = Object.assign({}, scheduleData[prev_s14][lastElementIndex][i]);;
-                                if (changed.count !== changed.index){
+                                if (changed.count !== changed.internal_index){
                                     if (changed) {
                                         const [startTime, endTime] = softmergeText.split('-');
                                         changed.start_time = startTime.trim();
                                         changed.end_time = endTime ? endTime.trim() : "";
-                                        changed.index += 1
+                                        changed.internal_index += 1
+                                        const anotherSave = async () => {
+                                            await this.saveSubjectData(changed)
+                                        }
+                                        anotherSave()
                                         scheduleData[prev_s14].push([changed]);                                   
                                     } else {
                                         console.log(changed)
@@ -100,7 +142,7 @@ export class ScrapperService{
                         
                         prev_s14 ++
                     }else{
-                        if ($(el).attr('dir') === 'ltr'){
+                        if ($(el).attr('dir') === 'ltr' || $(el).attr('class') === 's13'){
                             const cellText = $(el).text();
                             let countClassname = $(el).attr('rowspan')
                             let count: number = 1
@@ -111,21 +153,46 @@ export class ScrapperService{
                                   count = 1; 
                                 }
                               }
-                            const currentSubject = this.getSubjectInformation(cellText, softmergeText, count)
+                            const letters = ['A','B','C','D','E','F','G','H','I','J','K','L']
+                            const currentSubject = this.getSubjectInformation(cellText, softmergeText, count, ind, Class <= 10 ? FullClass : classIndextoString[i-3], Class, Class <= 10 ? prev_s14+1 : dayOfWeek)
                             if (currentSubject.teacher.length > 20 || firstOneIsInt(currentSubject.teacher)){
                                 return 
                             }
+
+                            
+                            // const save = async (subjectData: Subject) => {
+                            //     await this.saveSubjectData(subjectData)
+                            // }
+                            // if (Class > 10){
+                            //     for (let inl = 0; inl < count; inl ++){
+                            //         const timeRange = times[customIndex + inl];
+                            //         let start_time, end_time
+                            //         try{
+                            //             [start_time, end_time] = timeRange.split('-');
+                            //         }catch(err){
+                            //             console.log(count, customIndex)
+                            //             throw err 
+                            //         }
+                                    
+                            //         currentSubject.start_time = start_time;
+                            //         currentSubject.end_time = end_time;
+                            //         save(currentSubject)
+                            //     }
+                            // }else{
+                            //     save(currentSubject)
+                            // }
+                            
                             if (!scheduleData[prev_s14]){
                                 scheduleData[prev_s14] = []
                             }
 
-                            countClassname = $(el).attr('colspan')
-                            count = 1
-                            if (countClassname){
-                                count = parseInt(countClassname, 10); 
+                            const countColClassname = $(el).attr('colspan')
+                            let colcount = 1
+                            if (countColClassname){
+                                colcount = parseInt(countColClassname, 10); 
                               
-                                if (isNaN(count)) {
-                                  count = 1; 
+                                if (isNaN(colcount)) {
+                                    colcount = 1; 
                                 }
                             }
 
@@ -133,7 +200,7 @@ export class ScrapperService{
                                 if (!scheduleData[index]){
                                     scheduleData[index] = []
                                 }
-                                for (let i=0;i<count;i++){
+                                for (let i=0;i<colcount;i++){
                                     scheduleData[index].push([currentSubject])
                                 }
                             }else{
@@ -143,10 +210,12 @@ export class ScrapperService{
                             }else{
                                 scheduleData[prev_s14].push([currentSubject])
                             }
+                            customIndex++ 
                         }
                             prev_class = "ltr"                            
                         }
                     }
+                    ind++
                 });
     
                 // $(element).find('[dir="ltr"]').each((i, el) => {
@@ -300,16 +369,20 @@ export class ScrapperService{
         }
     };
 
-    getSubjectInformation(str: string, time: string, count: number):Subject{
+    getSubjectInformation(str: string, time: string, count: number, index: number, Class: string, parallel: number, day: number):Subject{
         let subject: Subject = {
+            parallel: parallel,
+            class: Class,
             name: "",
             teacher: "",
             cabinet: "",
             start_time: "",
             end_time: "",
             count: count,
-            index: 1,
-            is_choosen: false 
+            internal_index: 1,
+            is_choosen: false ,
+            index: index,
+            day_of_week: day
         }
         const [startTime, endTime] = time.split('-');
         subject.start_time = startTime.trim()
@@ -412,6 +485,24 @@ export class ScrapperService{
             console.error(err)
         }
     }
+
+    async saveSubjectData(data: Subject){
+        try{
+            await Subjects.findOneAndReplace(
+                {
+                    parallel: data.parallel,
+                    class: data.class,
+                    day_of_week: data.day_of_week,
+                    start_time: data.start_time,
+                    end_time: data.end_time
+                },
+                data ,
+                { upsert: true }
+            )
+        }catch(err){
+
+        }
+    }
 }
 
 function sleep(ms: number): Promise<void> {
@@ -434,6 +525,7 @@ const allSubjects = [
     "Physics №",
     "Computer science №",
     "Maths №",
+    "Graphics and design №",
     "Graphics and design №",
     "Biology №",
     "Chemistry №",

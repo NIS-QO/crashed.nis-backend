@@ -1,4 +1,5 @@
 export interface Subject{
+    class: string;
     name: string;
     teacher: string;
     cabinet: string;
@@ -7,6 +8,9 @@ export interface Subject{
     count: number;
     index: number
     is_choosen: boolean;
+    internal_index: number,
+    parallel: number,
+    day_of_week: number,
 }
 
 export interface ScheduleStructure{

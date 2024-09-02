@@ -1,6 +1,7 @@
 import puppeteer from "puppeteer";
 import { ScrapperService } from "./scrapper-service";
-import { ClassUrl, ScheduleStructure } from "./types/types";
+import { ClassUrl, ScheduleStructure, Subject } from "./types/types";
+import { sheets } from "googleapis/build/src/apis/sheets";
 export class ScrapperController {
     private scrapperService: ScrapperService;
 
@@ -55,7 +56,7 @@ export class ScrapperController {
                 while (attempt < 3 && !success) {
                     try {
                         attempt++;
-                        schedule = await this.scrapperService.GetScheduleViaAxios(classUrl.url, result);
+                        schedule = await this.scrapperService.GetScheduleViaAxios(classUrl.url, result, classUrl.class.slice(1));
                         console.log("Schedule loaded successfully");
                         success = true;
                     } catch (error) {
@@ -66,17 +67,30 @@ export class ScrapperController {
                     }
                 }
     
-                if (success) {
-                    if (result > 10) {
-                        schedule = await this.scrapperService.transformHighSchoolSchedule(schedule);
-                    }
-    
+                if (success) {    
                     const res: ScheduleStructure = {
                         class: classUrl.class.slice(1),
                         schedule: schedule,
                     };
     
                     await this.scrapperService.saveSchedule(res);
+
+                    if (!schedule){
+                        continue
+                    }
+                    for (let i = 0; i < schedule.length; i++){
+                        if (!schedule[i]){
+                            continue 
+                        }
+                        for (let j = 0;j < schedule[i].length; j++){
+                            if (!schedule[i][j]){
+                                continue
+                            }
+                            for (let k = 0; k < schedule[i][j].length; k++){
+                                await this.scrapperService.saveSubjectData(schedule[i][j][k])
+                            }
+                        }
+                    }
                 
                 }
     

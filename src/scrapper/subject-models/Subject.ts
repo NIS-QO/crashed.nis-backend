@@ -16,18 +16,19 @@ const SubjectSchema: Schema = new Schema({
     day_of_week: {type: Number}
 });
 
-const ScheduleSchema: Schema = new Schema({
-    class: { type: String, required: true },
-    schedule: [[[SubjectSchema]]] 
-});
-
-export interface ISchedule extends Document {
+export interface ISubject extends Document{
     class: string;
-    schedule: Subject[][];
+    name: string;
+    teacher: string;
+    cabinet: string;
+    start_time: string;
+    end_time: string;
+    count: number;
+    index: number
+    is_choosen: boolean;
+    internal_index: number,
+    parallel: number,
+    day_of_week: number,
 }
 
-export interface ITimetable extends Document{
-    
-}
-
-export default mongoose.model<ISchedule>("Schedule", ScheduleSchema);
+export default mongoose.model<ISubject>("Subjects", SubjectSchema);
