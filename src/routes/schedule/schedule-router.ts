@@ -9,5 +9,9 @@ const scheduleController = new ScheduleController(scheduleService)
 
 
 scheduleRouter.get("/class", scheduleController.getSchedule)
+scheduleRouter.get("/class/today", scheduleController.getTodaySchedule)
+scheduleRouter.get("/teacher", scheduleController.getTeachersSchedule)
+scheduleRouter.get("/cabinet", scheduleController.getCabinet)
+
 
 export default scheduleRouter

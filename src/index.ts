@@ -32,9 +32,9 @@ app.use("/", scheduleRouter)
 
 const some = async() => {
   await connectDB()
-  // const service = new ScrapperService()
-  // const controler = new ScrapperController(service)
-  // const scheduleService = new ScheduleService()
+  const service = new ScrapperService()
+  const controler = new ScrapperController(service)
+  const scheduleService = new ScheduleService()
   // const raspa = await scheduleService.getClassesLessons("11H",2,11,[])
   // // const raspa = await scheduleService.getCabinesLessons("223", 2)
   // console.log(raspa)

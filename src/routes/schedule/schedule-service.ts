@@ -22,6 +22,7 @@ class ScheduleService {
         return finalResult
     }
 
+
     async getCabinesLessons(cabinet: string, day_of_week: number): Promise<Subject[]>{
         let result: Subject[] = []
         try{
@@ -29,7 +30,9 @@ class ScheduleService {
         }catch(err){
             console.error(err)
         }
-        return result 
+        const sortedResult = this.sortSubjectsByStartTime(result)
+        const finalResult = this.transformSeniors(sortedResult)
+        return finalResult
     }
 
     async getTeachersLessongs(teacher: string, day_of_week: number): Promise<Subject[]>{
@@ -39,7 +42,9 @@ class ScheduleService {
         }catch(err){
             console.error(err)
         }
-        return result
+        const sortedResult = this.sortSubjectsByStartTime(result)
+        const finalResult = this.transformSeniors(sortedResult)
+        return finalResult
     }
 
     timeToMinutes(time: string): number {
@@ -58,21 +63,34 @@ class ScheduleService {
     transformSeniors(subjects: Subject[]): Subject[] {
         const result: Subject[] = [];
         
-        for (let i = 0; i<subjects.length;i++) {
+        for (let i = 0; i < subjects.length; i++) {
             for (let j = 0; j < subjects[i].count; j++) {
-                const newSubject = { ...subjects[i] };
-                result.push((newSubject as any)._doc);
+                if (subjects[i].parallel < 11){
+                    continue 
+                }
+                const newSubject: Subject = JSON.parse(JSON.stringify(subjects[i]));
+                let start_index = 0
+                
+                console.log(this.times)
+                console.log(subjects[i].start_time)
+
+                for (let j = 0; j < this.times.length; j++){
+                    if (this.times[j].startsWith(subjects[i].start_time)){
+                        start_index = j 
+                        break 
+                    }
+                }
+                newSubject.index++
+                const [start_time, end_time] = this.times[start_index+j].split("-")
+                newSubject.start_time = start_time 
+                newSubject.end_time = end_time
+                result.push(newSubject);
             }
         }
 
-        for (let i = 0; i< result.length; i++){
-            const [start_time, end_time] = this.times[i].split("-")
-            result[i].start_time = start_time
-            result[i].end_time = end_time
-        }
-        
         return result;
     }
+    
     
     getStartTimesIndex(start_time: string):number{
         for(let i = 0;i<this.times.length;i++){
@@ -82,9 +100,25 @@ class ScheduleService {
         }
         return 0
     }
-    private times = ["08.20-09.00","09.15-09.55","10.05-10.45","10.50-11.30","11.55-12.35","13.00-13.40",
-        "13.45-14.25","14.40-15.20","15.50-16.30","16.35-17.15"
+    private times = ["08:20-09:00","09:15-09:55","10:05-10:45","10:50-11:30","11:55-12:35","13:00-13:40",
+        "13:45-14:25","14:40-15:20","15:50-16:30","16:35-17:15"
     ]
+
+    getDayOfWeekGMT5() {
+        const date = new Date();
+    
+        const timeZoneOffset = 5 * 60; 
+        const localOffset = date.getTimezoneOffset(); 
+        const gmt5Date = new Date(date.getTime() + (localOffset + timeZoneOffset) * 60000);
+    
+        let dayOfWeek = gmt5Date.getUTCDay();
+    
+        if (dayOfWeek === 0) {
+            dayOfWeek = 7; 
+        }
+    
+        return dayOfWeek;
+    }
 }
 
 

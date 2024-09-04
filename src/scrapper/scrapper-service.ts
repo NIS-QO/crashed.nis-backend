@@ -142,7 +142,7 @@ export class ScrapperService{
                         
                         prev_s14 ++
                     }else{
-                        if ($(el).attr('dir') === 'ltr' || $(el).attr('class') === 's13'){
+                        if ($(el).attr('dir') === 'ltr' || $(el).attr('class') === 's13' || $(el).attr('class') === 's6'){
                             const cellText = $(el).text();
                             let countClassname = $(el).attr('rowspan')
                             let count: number = 1
