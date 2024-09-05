@@ -503,6 +503,16 @@ export class ScrapperService{
 
         }
     }
+
+    async deleteAllSubjects(): Promise<void> {
+        try {
+            await Subjects.deleteMany({});
+            console.log('All subjects have been deleted.');
+        } catch (err) {
+            console.error('Error deleting subjects:', err);
+        }
+    }
+    
 }
 
 function sleep(ms: number): Promise<void> {

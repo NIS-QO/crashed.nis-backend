@@ -10,6 +10,7 @@ import { ScrapperService } from './scrapper/scrapper-service';
 import connectDB from './db';
 import ScheduleService from './routes/schedule/schedule-service';
 import scheduleRouter from './routes/schedule/schedule-router';
+import studentRouter from './routes/students/student-router';
 
 dotenv.config();
 
@@ -29,6 +30,7 @@ app.use(passport.session());
 app.use('/', authRoutes);
 app.use('/', eventRoutes);
 app.use("/", scheduleRouter)
+app.use("/", studentRouter)
 
 const some = async() => {
   await connectDB()

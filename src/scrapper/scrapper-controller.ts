@@ -66,6 +66,8 @@ export class ScrapperController {
                         }
                     }
                 }
+
+                await this.scrapperService.deleteAllSubjects()
     
                 if (success) {    
                     const res: ScheduleStructure = {
